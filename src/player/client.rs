@@ -4,7 +4,7 @@ use leafwing_input_manager::axislike::DualAxisData;
 use leafwing_input_manager::buttonlike::ButtonState;
 use leafwing_input_manager::plugin::InputManagerSystem;
 use lightyear::client::prediction::Predicted;
-use lightyear::prelude::client::{ClientConnection, InputSystemSet, NetClient};
+use lightyear::prelude::client::{ClientConnection, NetClient};
 use lightyear::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 use leafwing_input_manager::prelude::*;
@@ -27,11 +27,10 @@ impl Plugin for ClientPlugin {
                 .run_if(in_state(State::Game))
         )
         .add_systems(
-            Update,
+            PreUpdate,
             update_player_mouse
                 .run_if(in_state(State::Game))
                 .in_set(InputManagerSystem::ManualControl)
-                .before(InputSystemSet::BufferInputs)
         );
 
         app.add_systems(Update, add_player_physics);

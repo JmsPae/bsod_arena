@@ -23,7 +23,7 @@ in {
   languages.rust = {
     enable = true;
     # https://devenv.sh/reference/options/#languagesrustchannel
-    channel = "stable";
+    channel = "nightly";
 
     components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" ];
   };
@@ -33,6 +33,5 @@ in {
   echo "[target.x86_64-unknown-linux-gnu]
   linker = \"clang\"  
   rustflags = [\"-C\", \"link-arg=-fuse-ld=${pkgs.mold}/bin/mold\"]" > .cargo/config.toml
-
   '';
 }
