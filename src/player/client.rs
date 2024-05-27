@@ -10,7 +10,7 @@ use bevy_xpbd_2d::prelude::*;
 use leafwing_input_manager::prelude::*;
 
 use crate::player::{player_input, PhysicsBundle};
-use crate::state::State;
+use crate::state::{NetState, State};
 use crate::FixedSet;
 
 use super::{player_rot, PlayerActions, PlayerId};
@@ -25,12 +25,15 @@ impl Plugin for ClientPlugin {
                 .chain()
                 .in_set(FixedSet::Main)
                 .run_if(in_state(State::Game))
+                .run_if(in_state(NetState::ClientServer))
+                .run_if(in_state(NetState::Client))
         )
         .add_systems(
             PreUpdate,
             update_player_mouse
-                .run_if(in_state(State::Game))
                 .in_set(InputManagerSystem::ManualControl)
+                .run_if(in_state(State::Game))
+                .run_if(in_state(NetState::ClientServer))
         );
 
         app.add_systems(Update, add_player_physics);

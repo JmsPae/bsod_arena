@@ -13,5 +13,6 @@ pub enum NetState {
     #[default]
     None,
     Server,
-    Client
+    Client,
+    ClientServer
 }

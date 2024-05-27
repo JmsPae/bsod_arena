@@ -18,6 +18,7 @@ use self::state::{NetState, State};
 
 mod player;
 mod state;
+mod common;
 pub mod networking;
 
 pub struct GamePlugin;
@@ -26,7 +27,8 @@ pub struct GamePlugin;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum FixedSet {
     // main fixed update systems (handle inputs)
-    Main,
+    MainClient,
+    MainServer,
     // apply physics steps
     Physics,
 }
@@ -58,7 +60,17 @@ impl Plugin for GamePlugin {
                     PhysicsSet::Sync,
                 )
                     .in_set(FixedSet::Physics),
-                (FixedSet::Main, FixedSet::Physics).chain(),
+                (
+                    FixedSet::MainClient
+                        .run_if(in_state(NetState::Client))
+                        .run_if(in_state(NetState::ClientServer))
+                        .run_if(in_state(State::Game)), 
+                    FixedSet::MainServer
+                        .run_if(in_state(NetState::Server))
+                        .run_if(in_state(NetState::ClientServer))
+                        .run_if(in_state(State::Game)), 
+                    FixedSet::Physics
+                ).chain(),
             ),
         );
 

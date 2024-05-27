@@ -1256,7 +1256,7 @@ dependencies = [
 [[package]]
 name = "bitcode_lightyear_patch"
 version = "0.5.1"
-source = "git+https://github.com/cBournhonesque/lightyear.git#303a2f00201a0e55bdd84fb940e955ee47387187"
+source = "git+https://github.com/cBournhonesque/lightyear.git#e792d7ef37d9a6cabdd9a63a254fc447a870b2dc"
 dependencies = [
  "bitcode_derive",
  "bytemuck",
@@ -1530,9 +1530,9 @@ dependencies = [
 
 [[package]]
 name = "clang-sys"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67523a3b4be3ce1989d607a828d036249522dd9c1c8de7f4dd2dae43a37369d1"
+checksum = "a483f3cbf7cec2e153d424d0e92329d816becc6421389bd494375c6065921b9b"
 dependencies = [
  "glob",
  "libc",
@@ -2936,7 +2936,7 @@ dependencies = [
 [[package]]
 name = "lightyear"
 version = "0.15.1"
-source = "git+https://github.com/cBournhonesque/lightyear.git#303a2f00201a0e55bdd84fb940e955ee47387187"
+source = "git+https://github.com/cBournhonesque/lightyear.git#e792d7ef37d9a6cabdd9a63a254fc447a870b2dc"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2980,7 +2980,7 @@ dependencies = [
 [[package]]
 name = "lightyear_macros"
 version = "0.15.1"
-source = "git+https://github.com/cBournhonesque/lightyear.git#303a2f00201a0e55bdd84fb940e955ee47387187"
+source = "git+https://github.com/cBournhonesque/lightyear.git#e792d7ef37d9a6cabdd9a63a254fc447a870b2dc"
 dependencies = [
  "proc-macro2",
  "quote",
