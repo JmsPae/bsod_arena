@@ -17,6 +17,7 @@ let
   };
 
   buildInputs = with pkgs; [ 
+    stdenv.cc.cc
     rustToolchain pkg-config rust-analyzer lld mold clang
     systemd
     alsa-lib 

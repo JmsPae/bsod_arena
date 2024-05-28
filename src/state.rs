@@ -7,12 +7,16 @@ pub enum State {
     Game
 }
 
-
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum NetState {
+pub enum ServerState {
     #[default]
     None,
-    Server,
-    Client,
-    ClientServer
+    Running
+}
+
+#[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ClientState {
+    #[default]
+    None,
+    Running
 }

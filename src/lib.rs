@@ -1,24 +1,29 @@
+use std::net::Ipv4Addr;
+
 use bevy::prelude::*;
 use bevy::render::camera::ScalingMode;
 use bevy::window::PrimaryWindow;
 use bevy_screen_diagnostics::ScreenDiagnosticsPlugin;
 use bevy_xpbd_2d::prelude::*;
-use leafwing_input_manager::axislike::AxisType;
 use leafwing_input_manager::prelude::*;
 use lightyear::client::components::Confirmed;
+use lightyear::client::config::ClientConfig;
 use lightyear::client::interpolation::plugin::InterpolationSet;
 use lightyear::client::prediction::plugin::PredictionSet;
+use lightyear::prelude::client::ClientCommands;
+use lightyear::prelude::server::ServerCommands;
 use lightyear::prelude::*;
 
 use crate::player::PlayerActions;
 
-use self::networking::{NetworkingPlugin, FIXED_UPDATE_HZ};
+use self::networking::{NetworkingPlugin, FIXED_UPDATE_HZ, config::remote_client_config};
 use self::player::{PlayerBundle, PlayerId, PlayerPlugin};
-use self::state::{NetState, State};
+use self::state::{ClientState, ServerState, State};
 
 mod player;
 mod state;
 mod common;
+//pub mod scripting;
 pub mod networking;
 
 pub struct GamePlugin;
@@ -29,16 +34,18 @@ pub enum FixedSet {
     // main fixed update systems (handle inputs)
     MainClient,
     MainServer,
+    MainScript,
     // apply physics steps
+    PrePhysics,
     Physics,
 }
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
 
-
         app.init_state::<State>()
-            .init_state::<NetState>();
+            .init_state::<ClientState>()
+            .init_state::<ServerState>();
 
         app.add_plugins((
             NetworkingPlugin,
@@ -61,18 +68,15 @@ impl Plugin for GamePlugin {
                 )
                     .in_set(FixedSet::Physics),
                 (
-                    FixedSet::MainClient
-                        .run_if(in_state(NetState::Client))
-                        .run_if(in_state(NetState::ClientServer))
-                        .run_if(in_state(State::Game)), 
-                    FixedSet::MainServer
-                        .run_if(in_state(NetState::Server))
-                        .run_if(in_state(NetState::ClientServer))
-                        .run_if(in_state(State::Game)), 
+                    FixedSet::MainClient.run_if(in_state(ClientState::Running)),
+                    FixedSet::MainServer.run_if(in_state(ServerState::Running)),
+                    FixedSet::MainScript,
+                    FixedSet::PrePhysics,
                     FixedSet::Physics
                 ).chain(),
             ),
         );
+
 
         app.add_systems(Startup, init)
             .add_systems(Update, await_mode
@@ -102,22 +106,32 @@ fn init(mut commands: Commands) {
 }
 
 fn await_mode(
+    mut commands: Commands,
     mut next_state: ResMut<NextState<State>>,
-    mut next_net_state: ResMut<NextState<NetState>>,
+    mut next_server_state: ResMut<NextState<ServerState>>,
+    mut next_client_state: ResMut<NextState<ClientState>>,
+    mut client_conf: ResMut<ClientConfig>,
 
     keys: Res<ButtonInput<KeyCode>>,
 ) {
     if keys.just_pressed(KeyCode::KeyS) {
         info!("Starting host");
 
+        commands.start_server();
+        commands.connect_client();
+
         next_state.set(State::Game);
-        next_net_state.set(NetState::Server);
+        next_server_state.set(ServerState::Running);
+        next_client_state.set(ClientState::Running);
     }
     else if keys.just_pressed(KeyCode::KeyC) {
         info!("Starting client");
     
+        *client_conf = remote_client_config(Ipv4Addr::new(127, 0, 0, 1));
+        commands.connect_client();
+        
         next_state.set(State::Game);
-        next_net_state.set(NetState::Client);
+        next_client_state.set(ClientState::Running);
     }
 }
 

@@ -1,16 +1,10 @@
-use std::net::Ipv4Addr;
-
 use bevy::prelude::*;
-use lightyear::client::config::ClientConfig;
-use lightyear::prelude::client::ClientCommands;
-use lightyear::prelude::server::ServerCommands;
 use lightyear::prelude::*;
 
-use crate::state::NetState;
 
-use self::config::{local_client_config, remote_client_config, server_config};
+use self::config::{local_client_config, server_config};
 
-mod config;
+pub mod config;
 
 pub const FIXED_UPDATE_HZ: f64 = 64.0;
 
@@ -38,24 +32,6 @@ impl Plugin for NetworkingPlugin {
             mode: ChannelMode::OrderedReliable(ReliableSettings::default()),
             ..default()
         });
-
-        app.add_systems(OnEnter(NetState::Server), init_host)
-            .add_systems(OnEnter(NetState::Client), init_client);
     }
 }
 
-
-
-fn init_host(mut commands: Commands,
-) {
-    commands.start_server();
-    commands.connect_client();
-}
-
-fn init_client(mut commands: Commands,
-
-    mut client_conf: ResMut<ClientConfig>,
-) {
-    *client_conf = remote_client_config(Ipv4Addr::new(127, 0, 0, 1));
-    commands.connect_client();
-}

@@ -9,7 +9,6 @@ use leafwing_input_manager::prelude::*;
 use crate::networking::REPLICATION_GROUP;
 use crate::player::player_input;
 use crate::player::PhysicsBundle;
-use crate::state::State;
 use crate::FixedSet;
 
 use super::player_rot;
@@ -23,14 +22,14 @@ impl Plugin for ServerPlugin {
 
         app.add_systems(
             PreUpdate,
-            replicate_players.in_set(ServerReplicationSet::ClientReplication),
+            replicate_players
+                .in_set(ServerReplicationSet::ClientReplication),
         );
 
         app.add_systems(FixedUpdate, 
             (movement, rotation)
                 .chain()
-                .in_set(FixedSet::Main)
-                .run_if(in_state(State::Game))
+                .in_set(FixedSet::MainServer)
         );
     }
 }

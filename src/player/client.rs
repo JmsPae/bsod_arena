@@ -10,7 +10,7 @@ use bevy_xpbd_2d::prelude::*;
 use leafwing_input_manager::prelude::*;
 
 use crate::player::{player_input, PhysicsBundle};
-use crate::state::{NetState, State};
+use crate::state::{ClientState, State};
 use crate::FixedSet;
 
 use super::{player_rot, PlayerActions, PlayerId};
@@ -23,20 +23,17 @@ impl Plugin for ClientPlugin {
         app.add_systems(FixedUpdate, 
             (movement, rotation)
                 .chain()
-                .in_set(FixedSet::Main)
-                .run_if(in_state(State::Game))
-                .run_if(in_state(NetState::ClientServer))
-                .run_if(in_state(NetState::Client))
+                .in_set(FixedSet::MainClient)
         )
         .add_systems(
             PreUpdate,
             update_player_mouse
                 .in_set(InputManagerSystem::ManualControl)
-                .run_if(in_state(State::Game))
-                .run_if(in_state(NetState::ClientServer))
+                .run_if(in_state(ClientState::Running))
         );
 
-        app.add_systems(Update, add_player_physics);
+        app.add_systems(Update, add_player_physics
+                .run_if(in_state(ClientState::Running)));
     }
 }
 
@@ -44,8 +41,9 @@ fn update_player_mouse(
     window_query: Query<(&Window, &ActionStateDriver<PlayerActions>)>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
 
-    mut action_state_query: Query<(&Position, &mut ActionState<PlayerActions>), With<Predicted>>
+    mut action_state_query: Query<(&Position, &mut ActionState<PlayerActions>), With<Predicted>>,
 ){
+    info_once!("Huh");
     let Ok((window, driver)) = window_query.get_single() else { return };
 
     let Some(cursor_pos) = window.cursor_position() else { return };
@@ -84,6 +82,7 @@ fn movement(
         (
             &mut LinearVelocity,
             &ActionState<PlayerActions>,
+            Entity
         ),
         // if we run in host-server mode, we don't want to apply this system to the local client's entities
         // because they are already moved by the client plugin
@@ -91,7 +90,7 @@ fn movement(
     >,
 ) {
     let dt = tick_manager.config.tick_duration.as_secs_f32();
-    for (velocity, action) in action_query.iter_mut() {
+    for (velocity, action, entity) in action_query.iter_mut() {
         if !action.get_pressed().is_empty() ||
             velocity.length() > 0.0 {
             // NOTE: be careful to directly pass Mut<PlayerPosition>

@@ -24,8 +24,8 @@ pub fn server_config() -> ServerConfig {
     let netcode_config = server::NetcodeConfig::default();
 
     let conditioner = Some(LinkConditionerConfig {
-        incoming_loss: 0.05,
-        incoming_latency: Duration::from_millis(25),
+        incoming_loss: 0.02,
+        incoming_latency: Duration::from_millis(20),
         incoming_jitter: Duration::from_millis(5)
     });
 
@@ -73,8 +73,8 @@ pub fn remote_client_config(address: Ipv4Addr) -> ClientConfig {
     let config = client::NetcodeConfig::default();
 
     let conditioner = LinkConditionerConfig {
-        incoming_loss: 0.05,
-        incoming_latency: Duration::from_millis(25),
+        incoming_loss: 0.02,
+        incoming_latency: Duration::from_millis(20),
         incoming_jitter: Duration::from_millis(5)
     };
 

@@ -48,6 +48,7 @@ impl Plugin for PlayerPlugin {
 }
 
 #[derive(Component, Serialize, Deserialize, Clone, Debug, PartialEq, Reflect)]
+#[reflect(Component)]
 pub struct PlayerId(pub ClientId);
 
 #[derive(Bundle)]
@@ -124,7 +125,7 @@ fn player_input(
             PlayerActions::Down =>  { accum.y -= 1.0 },
             PlayerActions::Left =>  { accum.x -= 1.0 },
             PlayerActions::Right => { accum.x += 1.0 },
-            PlayerActions::Look => { 
+            PlayerActions::Look => {
                 
             },
         }

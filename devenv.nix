@@ -9,6 +9,7 @@ let
     xorg.libX11 xorg.libXi xorg.libXcursor xorg.libXrandr vulkan-tools vulkan-headers vulkan-validation-layers
     wayland
     libxkbcommon
+    luajit
   ];
 in {
   # https://devenv.sh/basics/
@@ -16,7 +17,10 @@ in {
 
   # https://devenv.sh/packages/
   packages = with pkgs; [ 
-    clang lld mold
+    gcc
+    clang lld mold 
+    luajitPackages.teal-language-server
+    luajitPackages.tl
   ] ++ deps;
 
   # https://devenv.sh/scripts/

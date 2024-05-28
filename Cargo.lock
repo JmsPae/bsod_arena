@@ -374,9 +374,9 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bevy"
-version = "0.13.2"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65b9eadaacf8fe971331bc3f250f35c18bc9dace3f96b483062f38ac07e3a1b4"
+checksum = "ea370412c322af887c9115442d8f2ec991b652f163a1d8920ecaf08cae63f2bc"
 dependencies = [
  "bevy_internal",
 ]
@@ -1135,6 +1135,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_web_keepalive"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f71126dc7eeeb1823cf9ef02812e71c65b8f12aea349888bf98d01349234b82"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_time",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "bevy_window"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1256,7 +1269,7 @@ dependencies = [
 [[package]]
 name = "bitcode_lightyear_patch"
 version = "0.5.1"
-source = "git+https://github.com/cBournhonesque/lightyear.git#e792d7ef37d9a6cabdd9a63a254fc447a870b2dc"
+source = "git+https://github.com/cBournhonesque/lightyear.git#533d7a5b5a401ab5cbf78338042e44b416e51715"
 dependencies = [
  "bitcode_derive",
  "bytemuck",
@@ -2936,13 +2949,14 @@ dependencies = [
 [[package]]
 name = "lightyear"
 version = "0.15.1"
-source = "git+https://github.com/cBournhonesque/lightyear.git#e792d7ef37d9a6cabdd9a63a254fc447a870b2dc"
+source = "git+https://github.com/cBournhonesque/lightyear.git#533d7a5b5a401ab5cbf78338042e44b416e51715"
 dependencies = [
  "anyhow",
  "async-channel",
  "async-compat",
  "base64 0.22.1",
  "bevy",
+ "bevy_web_keepalive",
  "bevy_xpbd_2d",
  "bitcode_lightyear_patch",
  "byteorder",
@@ -2980,7 +2994,7 @@ dependencies = [
 [[package]]
 name = "lightyear_macros"
 version = "0.15.1"
-source = "git+https://github.com/cBournhonesque/lightyear.git#e792d7ef37d9a6cabdd9a63a254fc447a870b2dc"
+source = "git+https://github.com/cBournhonesque/lightyear.git#533d7a5b5a401ab5cbf78338042e44b416e51715"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4050,9 +4064,9 @@ checksum = "719b953e2095829ee67db738b3bfa9fa368c94900df327b3f07fe6e794d2fe1f"
 
 [[package]]
 name = "rustc-hash"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+checksum = "3450ed37fe9609abb6bc3b8891b6e078404e4c53c7332350e2e15126a95229bf"
 
 [[package]]
 name = "rustc_version"
