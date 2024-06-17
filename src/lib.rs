@@ -1,66 +1,39 @@
-use std::net::Ipv4Addr;
+use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
 use bevy::render::camera::ScalingMode;
-use bevy::window::PrimaryWindow;
-use bevy_screen_diagnostics::ScreenDiagnosticsPlugin;
-use bevy_xpbd_2d::prelude::*;
-use leafwing_input_manager::prelude::*;
-use lightyear::client::components::Confirmed;
-use lightyear::client::config::ClientConfig;
-use lightyear::client::interpolation::plugin::InterpolationSet;
-use lightyear::client::prediction::plugin::PredictionSet;
-use lightyear::prelude::client::ClientCommands;
-use lightyear::prelude::server::ServerCommands;
-use lightyear::prelude::*;
+use bevy_xpbd_3d::prelude::*;
+use iyes_perf_ui::PerfUiCompleteBundle;
 
-use crate::player::PlayerActions;
+mod debug;
+mod cursor;
 
-use self::networking::{NetworkingPlugin, FIXED_UPDATE_HZ, config::remote_client_config};
-use self::player::{PlayerBundle, PlayerId, PlayerPlugin};
-use self::state::{ClientState, ServerState, State};
-
+mod character_controller;
 mod player;
-mod state;
-mod common;
-//pub mod scripting;
-pub mod networking;
 
-pub struct GamePlugin;
-
+use self::character_controller::CharacterControllerPlugin;
+use self::cursor::GameCursorPlugin;
+use self::debug::DebugPlugin;
+use self::player::PlayerPlugin;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum FixedSet {
     // main fixed update systems (handle inputs)
-    MainClient,
-    MainServer,
-    MainScript,
-    // apply physics steps
-    PrePhysics,
+    Main,
     Physics,
 }
 
+pub struct GamePlugin;
+
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
+        app
+            .add_plugins((DebugPlugin, PhysicsPlugins::new(FixedUpdate), GameCursorPlugin))
+            .add_systems(Startup, setup);
 
-        app.init_state::<State>()
-            .init_state::<ClientState>()
-            .init_state::<ServerState>();
 
-        app.add_plugins((
-            NetworkingPlugin,
-            PhysicsPlugins::new(FixedUpdate),
-            ScreenDiagnosticsPlugin::default(),
-            PlayerPlugin
-        ))
-            .insert_resource(Time::new_with(Physics::fixed_once_hz(FIXED_UPDATE_HZ)))
-            .insert_resource(Gravity(Vec2::ZERO));
-
-        app.configure_sets(
-            FixedUpdate,
+        app.configure_sets(FixedUpdate, 
             (
-                // make sure that any physics simulation happens after the Main SystemSet
-                // (where we apply user's actions)
                 (
                     PhysicsSet::Prepare,
                     PhysicsSet::StepSimulation,
@@ -68,107 +41,88 @@ impl Plugin for GamePlugin {
                 )
                     .in_set(FixedSet::Physics),
                 (
-                    FixedSet::MainClient.run_if(in_state(ClientState::Running)),
-                    FixedSet::MainServer.run_if(in_state(ServerState::Running)),
-                    FixedSet::MainScript,
-                    FixedSet::PrePhysics,
+                    FixedSet::Main,
                     FixedSet::Physics
-                ).chain(),
-            ),
+                ).chain()
+            )
         );
 
+        app.insert_resource(FrameLimit::new(60.0));
+        app.add_systems(Last, limit_framerate.run_if(resource_exists::<FrameLimit>));
 
-        app.add_systems(Startup, init)
-            .add_systems(Update, await_mode
-                .run_if(in_state(State::NotInGame))
-            )
-            .add_systems(PostUpdate, draw_players
-                .after(InterpolationSet::Interpolate)
-                .after(PredictionSet::VisualCorrection)
-            )
-            .add_systems(PreUpdate, handle_connection
-                .after(MainSet::Receive)
-                .before(PredictionSet::SpawnPrediction)
-            );
+        app.add_plugins((PlayerPlugin, CharacterControllerPlugin));
     }
 }
 
-fn init(mut commands: Commands) {
+#[derive(Resource)]
+struct FrameLimit {
+    cap: f64,
+    inst: Instant
+}
+
+impl FrameLimit {
+    fn new(cap: f64) -> Self {
+        Self { cap, inst: Instant::now() }
+    }
+}
+
+fn limit_framerate(mut frame_limit: ResMut<FrameLimit>) { // Limit to 60fps
+    spin_sleep::sleep(
+        Duration::from_secs_f64(
+            (
+                (1.0 / frame_limit.cap) - 
+                frame_limit.inst.elapsed().as_secs_f64()
+            ).max(0.0)
+        )
+    );
+
+    frame_limit.inst = Instant::now();
+}
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>
+) {
+    let material = materials.add(StandardMaterial::from(Color::GRAY));
+    commands.spawn(PerfUiCompleteBundle::default());
+
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            color: Color::WHITE,
+            illuminance: 10_000.0,
+            shadows_enabled: true,
+            ..Default::default()
+        },
+        transform: Transform::default()
+                        .looking_to(Vec3::new(-0.5, -1.0, 0.5).normalize(), Vec3::Y),
+        ..Default::default()
+    });
+
     commands.spawn(
-        Camera2dBundle {
-            projection: OrthographicProjection {
-                scaling_mode: ScalingMode::FixedHorizontal(360.0),
-                ..Default::default()
-            },
+        PbrBundle {
+            mesh: meshes.add(Plane3d::new(Vec3::Y)),
+            material,
+            transform: Transform::from_scale(Vec3::ONE * 10.0),
             ..Default::default()
         }
     );
-}
 
-fn await_mode(
-    mut commands: Commands,
-    mut next_state: ResMut<NextState<State>>,
-    mut next_server_state: ResMut<NextState<ServerState>>,
-    mut next_client_state: ResMut<NextState<ClientState>>,
-    mut client_conf: ResMut<ClientConfig>,
+    commands.spawn(
+        Camera3dBundle {
+            projection: Projection::Orthographic(OrthographicProjection {
+                near: -1000.0,
+                far: 1000.0,
+                scaling_mode: ScalingMode::FixedVertical(16.0),
 
-    keys: Res<ButtonInput<KeyCode>>,
-) {
-    if keys.just_pressed(KeyCode::KeyS) {
-        info!("Starting host");
-
-        commands.start_server();
-        commands.connect_client();
-
-        next_state.set(State::Game);
-        next_server_state.set(ServerState::Running);
-        next_client_state.set(ClientState::Running);
-    }
-    else if keys.just_pressed(KeyCode::KeyC) {
-        info!("Starting client");
-    
-        *client_conf = remote_client_config(Ipv4Addr::new(127, 0, 0, 1));
-        commands.connect_client();
-        
-        next_state.set(State::Game);
-        next_client_state.set(ClientState::Running);
-    }
-}
-
-
-fn handle_connection(
-    mut commands: Commands,
-    mut connection_event: EventReader<client::ConnectEvent>,
-    window: Query<Entity, With<PrimaryWindow>>
-) {
-    for event in connection_event.read() {
-        info!("Spawning {:?}", event.client_id());
-
-        let map = InputMap::default().insert_multiple([
-            (PlayerActions::Up,     KeyCode::KeyW),
-            (PlayerActions::Down,   KeyCode::KeyS),
-            (PlayerActions::Left,   KeyCode::KeyA),
-            (PlayerActions::Right,  KeyCode::KeyD),
-        ]).to_owned();
-
-        let player = commands.spawn(
-            PlayerBundle::new(
-                event.client_id(),
-                InputManagerBundle::<PlayerActions>::with_map(map)
-        )).id();
-
-        commands.entity(window.single()).insert(ActionStateDriver {
-            action: PlayerActions::Look,
-            targets: player.into()
-        });
-    }
-}
-
-fn draw_players(
-    mut gizmos: Gizmos,
-    player_query: Query<(&Position, &Rotation), (With<PlayerId>, Without<Confirmed>)>
-) {
-    for (position, rotation) in player_query.iter() {
-        gizmos.rect_2d(position.xy(), rotation.as_radians(), Vec2::ONE * 16.0, Color::WHITE);
-    }
+                ..Default::default()
+            }),
+            camera: Camera {
+                hdr: true,
+                ..Default::default()
+            },
+            transform: Transform::default().looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
+            ..Default::default()
+        }
+    );
 }

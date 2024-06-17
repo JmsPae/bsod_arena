@@ -1,6 +1,7 @@
 { pkgs, lib, config, inputs, ... }:
 let
   deps = with pkgs; [
+    openssl
     stdenv.cc.cc
     pkg-config
     systemd

@@ -16,19 +16,14 @@ pub struct CharacterController;
 #[reflect(Component)]
 pub struct MovementAcceleration(pub f32);
 
-/// The damping factor used for slowing down movement.
-#[derive(Component, Serialize, Deserialize, Default, Clone, Debug, Deref, DerefMut, PartialEq, Reflect)]
-#[reflect(Component)]
-pub struct MovementDamping(pub f32);
-
 #[derive(Bundle)]
 pub struct MovementBundle {
     acceleration: MovementAcceleration,
-    damping: MovementDamping,
+    damping: LinearDamping,
 }
 
 impl MovementBundle {
-    pub fn new(acceleration: MovementAcceleration, damping: MovementDamping) -> Self {
+    pub fn new(acceleration: MovementAcceleration, damping: LinearDamping) -> Self {
         Self { acceleration, damping }
     }
 }
@@ -36,8 +31,8 @@ impl MovementBundle {
 impl Default for MovementBundle {
     fn default() -> Self {
         Self {
-            acceleration: MovementAcceleration(10.0),
-            damping: MovementDamping(5.0)
+            acceleration: MovementAcceleration(1.0),
+            damping: LinearDamping(0.8)
         }
     }
 }
@@ -125,15 +120,11 @@ impl Plugin for CharacterControllerPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<CharacterController>();
         app.register_component::<CharacterController>(ChannelDirection::Bidirectional)
-            .add_prediction(ComponentSyncMode::Once)
-            .add_interpolation(ComponentSyncMode::Once);
+            .add_interpolation(ComponentSyncMode::Once)
+            .add_prediction(ComponentSyncMode::Once);
 
         app.register_type::<MovementAcceleration>();
         app.register_component::<MovementAcceleration>(ChannelDirection::Bidirectional)
-            .add_prediction(ComponentSyncMode::Full);
-
-        app.register_type::<MovementDamping>();
-        app.register_component::<MovementDamping>(ChannelDirection::Bidirectional)
             .add_prediction(ComponentSyncMode::Full);
 
         app.register_type::<LookTarget>();

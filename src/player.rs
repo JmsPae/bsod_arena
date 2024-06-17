@@ -1,157 +1,103 @@
-
 use bevy::prelude::*;
-use bevy_xpbd_2d::prelude::*;
+use bevy::window::PrimaryWindow;
+use bevy_xpbd_3d::prelude::*;
 use leafwing_input_manager::prelude::*;
-use lightyear::client::components::ComponentSyncMode;
-use lightyear::prelude::client::Replicate;
-use lightyear::prelude::*;
-use lightyear::utils::bevy_xpbd_2d::{position, rotation};
 
-use crate::networking::REPLICATION_GROUP;
+use crate::character_controller::{CharacterController, CharacterControllerBundle, LookAcceleration, LookBundle, LookTarget, MovementAcceleration, MovementBundle, MovementDampening, MovementTarget, MovementVelocity};
 
-mod server;
-mod client;
+#[derive(Actionlike, PartialEq, Eq, Clone, Copy, Hash, Debug, Reflect)]
+enum Action {
+    Move,
+}
+
+#[derive(Component)]
+pub struct PlayerMarker;
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<PlayerId>();
-        app.register_component::<PlayerId>(ChannelDirection::Bidirectional)
-            .add_prediction(ComponentSyncMode::Once)
-            .add_interpolation(ComponentSyncMode::Once);
+        app.add_plugins(InputManagerPlugin::<Action>::default());
 
-        app.register_component::<Position>(ChannelDirection::Bidirectional)
-            .add_prediction(ComponentSyncMode::Full)
-            .add_interpolation(ComponentSyncMode::Full)
-            .add_interpolation_fn(position::lerp)
-            .add_correction_fn(position::lerp);
-
-        app.register_component::<Rotation>(ChannelDirection::Bidirectional)
-            .add_prediction(ComponentSyncMode::Full)
-            .add_interpolation(ComponentSyncMode::Full)
-            .add_interpolation_fn(rotation::lerp)
-            .add_correction_fn(rotation::lerp);
-
-        app.register_component::<LinearVelocity>(ChannelDirection::Bidirectional)
-            .add_prediction(ComponentSyncMode::Full);
-
-        app.register_component::<AngularVelocity>(ChannelDirection::Bidirectional)
-            .add_prediction(ComponentSyncMode::Full);
-
-        app.add_plugins((
-            LeafwingInputPlugin::<PlayerActions>::default(), 
-            server::ServerPlugin, 
-            client::ClientPlugin
-        ));
+        app.add_systems(Startup, startup);
+        app.add_systems(FixedPreUpdate, (input, look).chain());
     }
 }
 
-#[derive(Component, Serialize, Deserialize, Clone, Debug, PartialEq, Reflect)]
-#[reflect(Component)]
-pub struct PlayerId(pub ClientId);
+fn startup(
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let input_map = InputMap::new([(
+        Action::Move,
+        VirtualDPad {
+            up: InputKind::PhysicalKey(KeyCode::KeyW),
+            down: InputKind::PhysicalKey(KeyCode::KeyS),
+            left: InputKind::PhysicalKey(KeyCode::KeyA),
+            right: InputKind::PhysicalKey(KeyCode::KeyD)
+        }
+    )]);
 
-#[derive(Bundle)]
-pub struct PlayerBundle {
-    player_id: PlayerId,
 
-    position: Position,
-    physics: PhysicsBundle,
-
-    inputs: InputManagerBundle<PlayerActions>,
-
-    replicate: Replicate,
-    pre_predicted: PrePredicted
-}
-
-impl PlayerBundle {
-    pub fn new(player_id: ClientId, inputs: InputManagerBundle<PlayerActions>) -> PlayerBundle {
-        PlayerBundle {
-            player_id: PlayerId(player_id),
-
-            position: Position::new(Vec2::ZERO),
-            physics: PhysicsBundle::new(
-                RigidBody::Dynamic, 
-                Collider::rectangle(16.0, 16.0)
-            ),
-            inputs,
-            replicate: Replicate { 
-                group: REPLICATION_GROUP,
+    commands.spawn((
+        PlayerMarker,
+        CharacterControllerBundle {
+            movement_bundle: MovementBundle {
+                acceleration: MovementAcceleration(5.0),
+                velocity: MovementVelocity(2.0),
+                damping: MovementDampening(5.0),
                 ..Default::default()
             },
-            pre_predicted: PrePredicted::default()
-        }
-    }
-}
-
-#[derive(Bundle)]
-pub struct PhysicsBundle {
-    rigidbody: RigidBody,
-    collider: Collider,
-}
-
-impl PhysicsBundle {
-    fn new(rigidbody: RigidBody, collider: Collider) -> PhysicsBundle {
-        PhysicsBundle {
-            rigidbody,
-            collider
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect, Actionlike)]
-pub enum PlayerActions {
-    Up,
-    Down,
-    Left,
-    Right,
-
-    Look
-}
-
-
-fn player_input(
-    mut velocity: Mut<LinearVelocity>,
-
-    action: &ActionState<PlayerActions>,
-    dt: f32
-) {
-    const SPEED: f32 = 500.0;
-
-    let mut accum = Vec2::ZERO;
-    for act in action.get_pressed() {
-        match act {
-            PlayerActions::Up =>    { accum.y += 1.0 },
-            PlayerActions::Down =>  { accum.y -= 1.0 },
-            PlayerActions::Left =>  { accum.x -= 1.0 },
-            PlayerActions::Right => { accum.x += 1.0 },
-            PlayerActions::Look => {
-                
+            look_bundle: LookBundle {
+                acceleration: LookAcceleration(3.14),
+                look_target: Vec2::X.into(),
             },
+            ..Default::default()
+        },
+        InputManagerBundle::with_map(input_map),
+        SceneBundle {
+            scene: asset_server.load("meshes/character.glb#Scene0"),
+            ..Default::default()
         }
-    }
-
-    if accum.length() > 0.0 {
-        **velocity += accum.normalize() * SPEED * dt;
-    }
-    else if velocity.length() > 0.0 {
-        let len = (SPEED * dt).min(velocity.length());
-        *velocity = (velocity.xy() - velocity.normalize() * len).into();
-    }
-
-    *velocity = velocity.clamp_length_max(100.0).into();
+    ));
 }
 
-fn player_rot(
-    mut ang_vel: Mut<AngularVelocity>,
-
-    action: &ActionState<PlayerActions>,
-    rotation: &Rotation
+fn input(
+    mut query: Query<(
+        &mut MovementTarget, &ActionState<Action>
+    ), With<PlayerMarker>>
 ) {
-    
-    let rot = rotation.as_radians();
-    let Some(target) = action.axis_pair(&PlayerActions::Look) else { return };
+    let (mut movement, action_state) = query.single_mut();
 
-    ang_vel.0 = (target.y().atan2(target.x()) - rot) * 10.0;
+    if action_state.pressed(&Action::Move) {
+        let axis = action_state.axis_pair(&Action::Move).unwrap();
+        *movement = MovementTarget::Direction(axis.xy() * Vec2::new(1.0, -1.0));
+    }
+    else {
+        *movement = MovementTarget::None;
+    }
+
 }
 
+fn look(
+    win_q: Query<&Window, With<PrimaryWindow>>,
+    q_camera: Query<(&Camera, &GlobalTransform)>,
+
+    mut player_q: Query<(&mut LookTarget, &Position), With<PlayerMarker>>
+) {
+    let Ok(window) = win_q.get_single() else { return };
+    let (camera, camera_transform) = q_camera.single();
+
+    if let Some(cur_pos) = window.cursor_position() {
+        let Ok((mut look_target, position)) = player_q.get_single_mut() else { return };
+
+        let Some(ray) = camera.viewport_to_world(camera_transform, cur_pos) else { return };
+
+        let world_pos = ray.origin + ray.direction * (ray.origin.y / ray.direction.y);
+
+        look_target.0 = world_pos.xz() - position.xz();
+        
+    }
+}

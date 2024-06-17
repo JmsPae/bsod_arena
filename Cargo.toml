@@ -1,16 +1,35 @@
-[package]
-name = "bsod_arena"
-version = "0.1.0"
-edition = "2021"
+[[bin]]
+name = "lower_levels"
+path = "src/main.rs"
 
+[dependencies]
+bevy-inspector-egui = "0.24.0"
+bevy_xpbd_3d = { version = "0.4.2", features = ["serialize"] }
+iyes_perf_ui = "0.2.3"
+leafwing-input-manager = "0.13.3"
+spin_sleep = "1.2.0"
+
+[dependencies.bevy]
+default-features = false
+features = ["bevy_asset", "bevy_audio", "bevy_gilrs", "bevy_scene", "bevy_winit", "bevy_core_pipeline", "bevy_pbr", "bevy_gltf", "bevy_render", "bevy_sprite", "bevy_text", "bevy_ui", "file_watcher", "multi-threaded", "png", "vorbis", "x11", "wayland", "bevy_gizmos", "tonemapping_luts", "default_font"]
+version = "0.13"
+
+[dependencies.derive_more]
+features = ["add", "mul"]
+version = "0.99"
+
+[dependencies.serde]
+features = ["derive"]
+version = "1.0"
 
 [lib]
-name = "bsod_arena"
+name = "lower_levels"
 path = "src/lib.rs"
 
-[[bin]]
-name = "bsod_arena"
-path = "src/main.rs"
+[package]
+edition = "2021"
+name = "lower_levels"
+version = "0.1.0"
 
 [profile.dev]
 opt-level = 1
@@ -19,45 +38,8 @@ opt-level = 1
 opt-level = 3
 
 [profile.release]
+codegen-units = 1
+debug = false
+incremental = false
 lto = true
 opt-level = 3
-codegen-units = 1
-incremental = false
-debug = false
-
-[dependencies]
-serde = { version = "1.0", features = ["derive"] }
-bevy_xpbd_2d = { version = "0.4.2", features = ["serialize"] }
-lightyear = { git="https://github.com/cBournhonesque/lightyear.git", commit="303a2f0", features = ["xpbd_2d", "leafwing"] }
-leafwing-input-manager = "0.13.3"
-derive_more = { version = "0.99", features = ["add", "mul"] }
-bevy-inspector-egui = "0.24.0"
-bevy_screen_diagnostics = "0.5.0"
-#bevy_mod_scripting = { version = "0.6.0", features = ["lua_script_api", "bevy_script_api", "lua", "luajit52"] }
-
-[dependencies.bevy]
-version = "0.13"
-default-features = false
-features = [
-	"bevy_asset", 
-	"bevy_audio", 
-	"bevy_gilrs",
-	"bevy_scene", 
-	"bevy_winit", 
-	"bevy_core_pipeline", 
-	"bevy_pbr", 
-	"bevy_gltf", 
-	"bevy_render", 
-	"bevy_sprite", 
-	"bevy_text", 
-	"bevy_ui", 
-	"multi-threaded", 
-	"png", 
-	"vorbis", 
-	"x11", 
-	"wayland", 
-	"bevy_gizmos", 
-	"tonemapping_luts", 
-	"default_font", 
-	"bevy_debug_stepping"
-]
